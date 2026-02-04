@@ -1,0 +1,20 @@
+# specific generated / large directories
+.idea/
+data/
+weights/
+vis/
+
+# python
+__pycache__/
+*.py[cod]
+*.pth
+*.log
+*.png
+*.txt
+.env
+
+# vs code
+.vscode/
+
+# shell
+*.sh
