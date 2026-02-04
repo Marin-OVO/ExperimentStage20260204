@@ -1,5 +1,5 @@
 from .conv import *
-from .head import DensityPredictor, HeatmapHead
+from .head import *
 
 
 class UNetTest(nn.Module):
@@ -21,31 +21,40 @@ class UNetTest(nn.Module):
         self.up3 = (UpScaling(256, 128 // factor, bilinear))
         self.up4 = (UpScaling(128, 64, bilinear))
 
+        self.relu = nn.ReLU(inplace=True)
+
         self.conv1x1 = nn.Conv2d(in_channels=3, out_channels=64, kernel_size=1, stride=1)
-        self.conv1x1_ = nn.Conv2d(in_channels=1, out_channels=64, kernel_size=1, stride=1)
+        self.density_conv = nn.Conv2d(1, 64, 1)
 
         self.heatmap_head = HeatmapHead(in_channels=64, out_channels=num_class)
-        self.density_predictor = DensityPredictor(in_channels=64, out_channels=1)
+
+        self.kweights = KWeights(in_channels=64, out_channels=3, mid_channels=32)
+        self.density_predictor = DensityPredictorTwo(in_channels=64, out_channels=1)
 
         self.sigmoid = nn.Sigmoid()
 
     def forward(self, Ci):
+        # Down
         x1 = self.inc(Ci)   # 64
         x2 = self.down1(x1) # 128  /2
         x3 = self.down2(x2) # 256  /4  @@
         x4 = self.down3(x3) # 512  /8
         x5 = self.down4(x4) # 512  /16 @@
 
+        # Up
         Fi = self.up1(x5, x4)
         Fi = self.up2(Fi, x3)
         Fi = self.up3(Fi, x2)
         Fi = self.up4(Fi, x1)
 
+        k = self.kweights(Fi)
+        # density_out = self.density_predictor(Fi, k)
         density_out = self.density_predictor(Fi)
-        density_feat = self.conv1x1_(density_out)
-        Fi_sub = Fi * density_feat
 
-        heatmap_out = self.heatmap_head(Fi + Fi_sub)
+        density_feature = self.density_conv(density_out)
+        Fi_density = Fi * density_feature
+
+        heatmap_out = self.heatmap_head(Fi + Fi_density)
 
         return {
             "heatmap_out": heatmap_out,

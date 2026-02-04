@@ -68,10 +68,10 @@ class DownScaling(nn.Module):
 
 class UpScaling(nn.Module):
     """
-        up conv and then double conv
-        Args:
-            c1: in channels
-            c2: out channels
+    up conv and then double conv
+    Args:
+        c1: in channels
+        c2: out channels
     """
     def __init__(self, c1, c2, bilinear=True):
         super().__init__()
@@ -97,8 +97,7 @@ class UpScaling(nn.Module):
         x = torch.cat([x2, x1], dim=1)
 
         return self.conv(x)
-
-
+    
 class Up(nn.Module):
     def __init__(self, in_channels, out_channels):
         super().__init__()
@@ -115,10 +114,8 @@ class Up(nn.Module):
 
         return self.conv(x1)
 
-
 def subtract_avg_pool(x, k=5):
     avg = F.avg_pool2d(
         x, kernel_size=k, stride=1, padding=k//2
     )
-
     return x - avg
