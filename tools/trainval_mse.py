@@ -243,7 +243,7 @@ def main(args):
             f"F1-score: {tmp_results['f1_score']:^8.4f} | "
             f"mAP: {tmp_results['mAP']:^8.4f} | "
             f"Best-Val({validate_on}): {best_val:^8.4f} | "
-            f"Best-Epoch: {best_epoch + 1:03d} "
+            f"Best-Epoch: {best_epoch + 1:^3} "
         )
 
         lr_scheduler.step()

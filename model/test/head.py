@@ -1,6 +1,5 @@
 import torch
 import torch.nn as nn
-from networkx.algorithms.bipartite.basic import density
 
 
 class HeatmapHead(nn.Module):
@@ -19,69 +18,6 @@ class HeatmapHead(nn.Module):
 
 
 class DensityPredictor(nn.Module):
-    def __init__(self, in_channels, out_channels: int=1, mid_channels: int=128):
-        super().__init__()
-
-        self.conv = nn.Sequential(
-            nn.Conv2d(in_channels, mid_channels, 1),
-            nn.Conv2d(mid_channels, mid_channels // 2, 3, padding=1),
-            nn.BatchNorm2d(mid_channels // 2),
-            nn.ReLU(inplace=True),
-
-            nn.Conv2d(mid_channels // 2, mid_channels // 4, 3, padding=1),
-            nn.BatchNorm2d(mid_channels // 4),
-            nn.ReLU(inplace=True),
-
-            nn.Conv2d(mid_channels // 4, mid_channels // 2, 3, padding=1),
-            nn.ReLU(inplace=True),
-            nn.Conv2d(mid_channels // 2, out_channels, 1),
-
-            nn.Softplus()
-        )
-
-    def forward(self, x):
-        density_out = self.conv(x)
-
-        return density_out
-
-
-class DensityPredictorTwo(nn.Module):
-    def __init__(self, in_channels, out_channels: int=1, mid_channels: int=128):
-        super().__init__()
-
-        self.head = nn.Sequential(
-            nn.Conv2d(in_channels, mid_channels, 3, padding=1),
-            nn.BatchNorm2d(mid_channels),
-            nn.ReLU(inplace=True),
-        )
-
-        self.dila_1 = nn.Conv2d(mid_channels, mid_channels // 4, 3, padding=1, dilation=1)
-        self.dila_2 = nn.Conv2d(mid_channels, mid_channels // 4, 3, padding=2, dilation=2)
-        self.dila_3 = nn.Conv2d(mid_channels, mid_channels // 4, 3, padding=3, dilation=3)
-        self.dila_4 = nn.Conv2d(mid_channels, mid_channels // 4, 3, padding=4, dilation=4)
-
-        self.end = nn.Sequential(
-            nn.Conv2d(mid_channels, mid_channels // 2, 3, padding=1),
-            nn.ReLU(inplace=True),
-            nn.Conv2d(mid_channels // 2, out_channels, 1),
-            nn.Softplus()
-        )
-
-    def forward(self, x):
-        x = self.head(x)
-
-        x1 = self.dila_1(x)
-        x2 = self.dila_2(x)
-        x3 = self.dila_3(x)
-        x4 = self.dila_4(x)
-
-        mid_out = torch.cat([x1, x2, x3, x4], dim=1)
-        density_out = self.end(mid_out)
-
-        return density_out
-
-
-class DynamicAtrousDensityPredictor(nn.Module):
     def __init__(self, in_channels, mid_channels=128, out_channels=1):
         super().__init__()
 
@@ -91,9 +27,9 @@ class DynamicAtrousDensityPredictor(nn.Module):
             nn.ReLU(inplace=True),
         )
 
-        self.receptive_1 = nn.Conv2d(in_channels, mid_channels, 3, padding=1, dilation=1)
-        self.receptive_2 = nn.Conv2d(in_channels, mid_channels, 3, padding=2, dilation=2)
-        self.receptive_3 = nn.Conv2d(in_channels, mid_channels, 3, padding=3, dilation=3)
+        self.receptive_1 = nn.Conv2d(mid_channels, mid_channels, 3, padding=1, dilation=1)
+        self.receptive_2 = nn.Conv2d(mid_channels, mid_channels, 3, padding=2, dilation=2)
+        self.receptive_3 = nn.Conv2d(mid_channels, mid_channels, 3, padding=3, dilation=3)
 
         self.end = nn.Sequential(
             nn.Conv2d(mid_channels, mid_channels // 2, 1),
@@ -104,6 +40,7 @@ class DynamicAtrousDensityPredictor(nn.Module):
         )
 
     def forward(self, x, k):
+        x = self.head(x)
 
         x1 = self.receptive_1(x)
         x2 = self.receptive_2(x)
@@ -122,11 +59,11 @@ class KWeights(nn.Module):
     def __init__(self, in_channels, out_channels: int=3, mid_channels: int=128):
         super().__init__()
 
-        self.head = nn.Sequential(
-            nn.Conv2d(in_channels, mid_channels, 3, padding=1),
-            nn.BatchNorm2d(mid_channels),
-            nn.ReLU(inplace=True),
-        )
+        # self.head = nn.Sequential(
+        #     nn.Conv2d(in_channels, mid_channels, 3, padding=1),
+        #     nn.BatchNorm2d(mid_channels),
+        #     nn.ReLU(inplace=True),
+        # )
 
         self.weights = nn.Sequential(
             nn.AdaptiveAvgPool2d(1),

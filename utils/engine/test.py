@@ -2,7 +2,7 @@
     2026-02-02 experiment: mse
     2026-02-03 experiment: add multi
     2026-02-04 experiment: test
-
+    2026-02-06 experiment: add x - avg.pool and dk
 """
 import time
 from typing import Optional, Union
@@ -13,6 +13,7 @@ from utils.lmds import LMDS
 from utils.logger import *
 from utils.averager import *
 from utils.loss import *
+from model import AdaptiveKernel
 
 from torch.cuda.amp import autocast
 
@@ -112,6 +113,7 @@ def val_one_epoch(
 
     model.eval()
 
+    kernel = AdaptiveKernel(k_min=3, k_max=9, use_gmp=True).cuda()
     for step, (images, targets) in enumerate(val_dataloader):
         images = images.cuda()
 
@@ -146,11 +148,13 @@ def val_one_epoch(
             loc=gt_coords,
             labels=gt_labels
         )
+        dynamic_k = kernel(outputs['heatmap_out'])[0]
+        ks = (dynamic_k, dynamic_k)
 
         # int -> (tuple)
-        ks = args.lmds_kernel_size
-        if isinstance(ks, int):
-            ks = (ks, ks)
+        # ks = args.lmds_kernel_size
+        # if isinstance(ks, int):
+        #     ks = (ks, ks)
 
         lmds = LMDS(
             kernel_size=ks,

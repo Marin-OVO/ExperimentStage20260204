@@ -1,5 +1,6 @@
 from .conv import *
 from .head import *
+from .module import *
 
 
 class UNetTest(nn.Module):
@@ -24,12 +25,12 @@ class UNetTest(nn.Module):
         self.relu = nn.ReLU(inplace=True)
 
         self.conv1x1 = nn.Conv2d(in_channels=3, out_channels=64, kernel_size=1, stride=1)
-        self.density_conv = nn.Conv2d(1, 64, 1)
+        self.density_conv = nn.Conv2d(3, 64, 1)
 
         self.heatmap_head = HeatmapHead(in_channels=64, out_channels=num_class)
 
         self.kweights = KWeights(in_channels=64, out_channels=3, mid_channels=32)
-        self.density_predictor = DensityPredictorTwo(in_channels=64, out_channels=1)
+        self.density_predictor = DensityPredictor(in_channels=64, out_channels=1)
 
         self.sigmoid = nn.Sigmoid()
 
@@ -48,16 +49,18 @@ class UNetTest(nn.Module):
         Fi = self.up4(Fi, x1)
 
         k = self.kweights(Fi)
-        # density_out = self.density_predictor(Fi, k)
-        density_out = self.density_predictor(Fi)
+        density_out = self.density_predictor(Fi, k) # 1
 
-        density_feature = self.density_conv(density_out)
+        Ci_avg = subtract_avg_pool(Ci, k=5) # 3
+        density_out = density_out * Ci_avg
+
+        density_feature = self.density_conv(density_out) # @@.
         Fi_density = Fi * density_feature
 
         heatmap_out = self.heatmap_head(Fi + Fi_density)
 
         return {
-            "heatmap_out": heatmap_out,
+            "heatmap_out": heatmap_out, # [B, 2, H, W]
         }
 
     def use_checkpointing(self):
