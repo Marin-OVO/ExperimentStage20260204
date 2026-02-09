@@ -3,9 +3,9 @@ from .head import *
 from .module import *
 
 
-class UNetTest(nn.Module):
+class UNetTestRes(nn.Module):
     def __init__(self, in_channels, num_class=2, bilinear=False):
-        super(UNetTest, self).__init__()
+        super().__init__()
         self.in_channels = in_channels
         self.out_channels = num_class
         self.bilinear = bilinear
@@ -29,10 +29,12 @@ class UNetTest(nn.Module):
 
         self.heatmap_head = HeatmapHead(in_channels=64, out_channels=num_class)
 
-        # self.kweights = KWeights(in_channels=64, out_channels=3, mid_channels=32)
-        self.density_predictor = DensityPredictorWithDila4(in_channels=64, out_channels=1)
+        self.density_predictor = DensityPredictor(in_channels=64, out_channels=1)
+        self.res_predictor = ResPredictor(in_channels=3, out_channels=2)
 
         self.sigmoid = nn.Sigmoid()
+
+        self.k = nn.Parameter(torch.zeros(1))
 
     def forward(self, Ci):
         # Down
@@ -48,19 +50,45 @@ class UNetTest(nn.Module):
         Fi = self.up3(Fi, x2)
         Fi = self.up4(Fi, x1)
 
-        density_out = self.density_predictor(Fi) # 1
+        ## ======
+        # density_out = self.density_predictor(Fi)  # 1
+        #
+        # Ci_avg = subtract_avg_pool(Ci, k=3)  # 3
+        # Ci_mid = Ci_avg * self.sigmoid(Ci_avg) + Ci_avg
+        # gate = Ci_mid * torch.sigmoid(density_out) # 3 * 1 = 3
+        # Fi_res = self.res_predictor(gate)  # 2
+        #
+        # density_out = density_out * Ci_mid # 1 * 3 = 3
+        # density_feature = self.density_conv(density_out)  # @@.
+        # Fi_density = Fi * density_feature
+        # heatmap_out = self.heatmap_head(Fi + Fi_density)  # main head
+        # heatmap_out = heatmap_out + self.k * Fi_res
 
-        # k = self.kweights(Fi)
-        # density_out = self.density_predictor(Fi, k) # 1
+        ## ======20260209
+        # density_out = self.density_predictor(Fi) # 1
+        # gate = torch.sigmoid(density_out)
+        #
+        # Ci_avg = subtract_avg_pool(Ci, k=3) # 3
+        # Ci_mid = Ci_avg * self.sigmoid(Ci_avg) + Ci_avg
+        # Ci_mid_1 = torch.mean(Ci_mid, dim=1, keepdim=True)
+        #
+        # density_f = Ci_mid_1 * gate # 1
+        #
+        # Fi_density = Fi * density_f
+        # heatmap_out = self.heatmap_head(Fi + Fi_density) # main head 2
+        #
+        # res_input = torch.cat([heatmap_out, density_f], dim=1)
+        # Fi_res = self.res_predictor(res_input) # 2
+        # heatmap_out = heatmap_out + self.k * Fi_res
 
-        Ci_avg = subtract_avg_pool(Ci, k=3) # 3
-        Ci_mid = Ci_avg * self.sigmoid(Ci_avg) + Ci_avg
-        density_out = density_out * Ci_mid
+        ## ======
+        density_out = self.density_predictor(Fi)  # 1
+        Ci_avg = subtract_avg_pool(Ci, k=3)  # 3
+        # Ci_mid = Ci_avg * self.sigmoid(Ci_avg) + Ci_avg
 
-        density_feature = self.density_conv(density_out) # @@.
-        Fi_density = Fi * density_feature
-
-        heatmap_out = self.heatmap_head(Fi + Fi_density)
+        gate = self.density_conv(density_out * Ci_avg)
+        Fi_enhanced = Fi * (1 + gate)
+        heatmap_out = self.heatmap_head(Fi_enhanced)
 
         return {
             "heatmap_out": heatmap_out, # [B, 2, H, W]

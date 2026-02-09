@@ -3,6 +3,7 @@
     2026-02-03 experiment: add multi
     2026-02-04 experiment: test
     2026-02-06 experiment: add x - avg.pool and dk
+    2026-02-08 experiment: add res modeling
 """
 import time
 from typing import Optional, Union
@@ -13,7 +14,6 @@ from utils.lmds import LMDS
 from utils.logger import *
 from utils.averager import *
 from utils.loss import *
-from model import AdaptiveKernel
 
 from torch.cuda.amp import autocast
 
