@@ -5,9 +5,9 @@ import datetime
 import matplotlib.pyplot as plt
 
 
-def plot_loss_and_lr(train_loss, learning_rate,  save_dir='./'):
+def plot_loss_and_lr(train_loss, learning_rate, min: int=1, save_dir='./'):
     try:
-        x = list(range(1, len(train_loss) + 1))
+        x = min * list(range(1, len(train_loss) + 1))
         fig, ax1 = plt.subplots(1, 1)
         ax1.plot(x, train_loss, 'r', label='loss')
         ax1.set_xlabel("epoch")
@@ -35,9 +35,9 @@ def plot_loss_and_lr(train_loss, learning_rate,  save_dir='./'):
         print(e)
 
 
-def plot_map(mAP, save_dir='./'):
+def plot_map(mAP, min: int=1, save_dir='./'):
     try:
-        x = list(range(1, len(mAP) + 1))
+        x = min * list(range(1, len(mAP) + 1))
         plt.plot(x, mAP, label='mAp')
         plt.xlabel('epoch')
         plt.ylabel('mAP')
@@ -52,9 +52,9 @@ def plot_map(mAP, save_dir='./'):
     except Exception as e:
         print(e)
 
-def plot_f1(f1, save_dir='./'):
+def plot_f1(f1, min: int=1, save_dir='./'):
     try:
-        x = list(range(1, len(f1) + 1))
+        x = min * list(range(1, len(f1) + 1))
         plt.plot(x, f1, label='F1-score')
         plt.xlabel('epoch')
         plt.ylabel('F1-score')
