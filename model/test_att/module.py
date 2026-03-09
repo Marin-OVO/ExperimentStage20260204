@@ -65,13 +65,17 @@ class RSAtt(nn.Module):
         super().__init__()
         self.map_avg = nn.Sequential(
             nn.Conv2d(in_channels, in_channels // 4, 3, padding=1),
+            nn.BatchNorm2d(in_channels // 4),
             nn.ReLU(inplace=True),
-            nn.Conv2d(in_channels // 4, in_channels, 1)
+            nn.Conv2d(in_channels // 4, in_channels, 1),
+            nn.BatchNorm2d(in_channels),
         )
         self.map_max = nn.Sequential(
             nn.Conv2d(in_channels, in_channels // 4, 3, padding=1),
+            nn.BatchNorm2d(in_channels // 4),
             nn.ReLU(inplace=True),
-            nn.Conv2d(in_channels // 4, in_channels, 1)
+            nn.Conv2d(in_channels // 4, in_channels, 1),
+            nn.BatchNorm2d(in_channels),
         )
         self.sigmoid = nn.Sigmoid()
 
@@ -82,3 +86,105 @@ class RSAtt(nn.Module):
         gate = self.sigmoid(self.map_avg(x_avg) + self.map_max(x_max))
 
         return gate
+
+
+class Gate(nn.Module):
+    def __init__(self, in_channels):
+        super().__init__()
+        self.conv = nn.Sequential(
+            nn.Conv2d(in_channels, in_channels, 1, 1, bias=False),
+            nn.BatchNorm2d(in_channels)
+        )
+        self.gamma = nn.Parameter(torch.ones(1) * 1.2)
+
+    def forward(self, x):
+        gate = torch.sigmoid(self.conv(x))
+        gate = torch.pow(gate, self.gamma)
+
+        return gate
+
+
+class SharpnessRefiner(nn.Module):
+    def __init__(self, in_channels):
+        super().__init__()
+        self.laplacian_conv = nn.Conv2d(in_channels, in_channels, kernel_size=3,
+                                        padding=1, groups=in_channels, bias=False)
+
+        kernel = torch.tensor([[-1., -1., -1.],
+                               [-1., 8., -1.],
+                               [-1., -1., -1.]])
+        kernel = kernel.view(1, 1, 3, 3).repeat(in_channels, 1, 1, 1)
+        self.laplacian_conv.weight.data = kernel
+        self.laplacian_conv.weight.requires_grad = False
+
+    def forward(self, x):
+        sharp = self.laplacian_conv(x)
+        gate = torch.sigmoid(sharp)
+
+        return 1 + gate
+
+
+class Weight(nn.Module):
+    def __init__(self):
+        super().__init__()
+
+
+class Block(nn.Module):
+    def __init__(self, in_channels, out_channels):
+        super().__init__()
+        self.pre_conv = nn.Conv2d(in_channels, out_channels, kernel_size=1)
+
+        self.d1 = nn.Conv2d(out_channels, out_channels // 4, 3, padding=1, dilation=1)
+        self.d2 = nn.Conv2d(out_channels, out_channels // 4, 3, padding=2, dilation=2)
+        self.d3 = nn.Conv2d(out_channels, out_channels // 4, 3, padding=3, dilation=3)
+        self.d4 = nn.Conv2d(out_channels, out_channels // 4, 3, padding=4, dilation=4)
+
+        self.se = nn.Sequential(
+            nn.AdaptiveAvgPool2d(1),
+            nn.Conv2d(out_channels, out_channels // 4, 1),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(out_channels // 4, out_channels, 1),
+            nn.Sigmoid()
+        )
+        self.post_conv = nn.Conv2d(out_channels, out_channels, 3, padding=1)
+        self.bn = nn.BatchNorm2d(out_channels)
+        self.relu = nn.ReLU(inplace=True)
+
+    def forward(self, x):
+        x = self.pre_conv(x)
+
+        x1 = self.d1(x)
+        x2 = self.d2(x)
+        x3 = self.d3(x)
+        x4 = self.d4(x)
+        x_ms = torch.cat([x1, x2, x3, x4], dim=1)
+
+        k = self.se(x_ms)
+        x_refined = x_ms * k
+
+        out = self.post_conv(x_refined)
+        out = self.bn(out)
+
+        if x.shape == out.shape:
+            out += x
+
+        return self.relu(out)
+
+
+class Branch(nn.Module):
+    def __init__(self, in_channels, out_channels):
+        super().__init__()
+        self.conv = nn.Conv2d(in_channels, 64, kernel_size=3, padding=1)
+
+        self.block1 = Block(64, 64)
+        self.block2 = Block(64, 64)
+
+    def forward(self, x, mask):
+        x1 = self.conv(x)
+        mask = torch.sigmoid(mask)
+
+        x1 = self.block1(x1) * mask
+        out = self.block2(x1) * mask
+
+        return out
+
