@@ -9,6 +9,10 @@ class HeatmapHead(nn.Module):
         self.conv = nn.Sequential(
             nn.Conv2d(in_channels, out_channels, kernel_size=1),
 
+            # nn.Conv2d(in_channels, in_channels // 2, kernel_size=1),
+            # nn.ReLU(inplace=True),
+            # nn.Conv2d(in_channels // 2, out_channels, kernel_size=1)
+
             # nn.Conv2d(in_channels, in_channels // 2, kernel_size=3, padding=1),
             # nn.ReLU(inplace=True),
             # nn.Conv2d(in_channels // 2, out_channels, kernel_size=1),
@@ -26,10 +30,10 @@ class DensityPredictor(nn.Module):
         super().__init__()
 
         self.head = nn.Sequential(
-            nn.Conv2d(in_channels, mid_channels, 3, padding=1),
+            nn.Conv2d(in_channels, mid_channels, 3, padding=1, bias=False),
             nn.BatchNorm2d(mid_channels),
-            nn.Conv2d(mid_channels, mid_channels, 3, padding=1),
-            # nn.ReLU(inplace=True),
+            # nn.Conv2d(mid_channels, mid_channels, 3, padding=1),
+            nn.ReLU(inplace=True),
         )
 
         self.receptive_1 = nn.Conv2d(mid_channels, mid_channels // 4, 3, padding=1, dilation=1)

@@ -10,8 +10,8 @@ def args_parser():
     parser.add_argument('--num_classes', default=2, type=int)
 
     # training parameters
-    parser.add_argument('--epoch', default=10, type=int, metavar='N')
-    parser.add_argument('--batch_size', default=4, type=int, metavar='N')
+    parser.add_argument('--epoch', default=80, type=int, metavar='N')
+    parser.add_argument('--batch_size', default=16, type=int, metavar='N')
     parser.add_argument('--lr', default=0.0003, type=float)
     parser.add_argument('--weight_decay', default=1e-4, type=float)
     parser.add_argument('--num_worker', default=0, type=int)

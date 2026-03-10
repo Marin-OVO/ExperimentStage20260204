@@ -24,8 +24,8 @@ class DensityPredictor(nn.Module):
         self.head = nn.Sequential(
             nn.Conv2d(in_channels, mid_channels, 3, padding=1),
             nn.BatchNorm2d(mid_channels),
-            nn.Conv2d(mid_channels, mid_channels, 3, padding=1),
-            # nn.ReLU(inplace=True),
+            # nn.Conv2d(mid_channels, mid_channels, 3, padding=1),
+            nn.ReLU(inplace=True),
         )
 
         self.receptive_1 = nn.Conv2d(mid_channels, mid_channels // 4, 3, padding=1, dilation=1)
@@ -41,70 +41,6 @@ class DensityPredictor(nn.Module):
             # nn.Sigmoid()
         )
 
-    def forward(self, x, k):
-        x = self.head(x)
-
-        x1 = self.receptive_1(x)
-        x2 = self.receptive_2(x)
-        x3 = self.receptive_3(x)
-        x4 = self.receptive_4(x)
-
-        F_mid = torch.cat([x1, x2, x3, x4], dim=1)
-
-        # F_mid = (k[:, 0].view(-1, 1, 1, 1) * x1 +
-        #                  k[:, 1].view(-1, 1, 1, 1) * x2 +
-        #                  k[:, 2].view(-1, 1, 1, 1) * x3)
-
-        density_out = self.end(F_mid)
-
-        return density_out
-
-
-class KWeights(nn.Module):
-    def __init__(self, in_channels, out_channels: int=3, mid_channels: int=128):
-        super().__init__()
-
-        # self.head = nn.Sequential(
-        #     nn.Conv2d(in_channels, mid_channels, 3, padding=1),
-        #     nn.BatchNorm2d(mid_channels),
-        #     nn.ReLU(inplace=True),
-        # )
-
-        self.weights = nn.Sequential(
-            nn.AdaptiveAvgPool2d(1),
-            nn.Flatten(),
-            nn.Linear(in_channels, out_channels),
-            nn.Softmax(dim=1)
-        )
-
-    def forward(self, x):
-        k = self.weights(x)
-
-        return k
-
-
-class DensityPredictorWithDila4(nn.Module):
-    def __init__(self, in_channels, out_channels: int=1, mid_channels: int=128):
-        super().__init__()
-
-        self.head = nn.Sequential(
-            nn.Conv2d(in_channels, mid_channels, 3, padding=1),
-            nn.BatchNorm2d(mid_channels),
-            nn.Conv2d(mid_channels, mid_channels, 3, padding=1),
-        )
-
-        self.receptive_1 = nn.Conv2d(mid_channels, mid_channels // 4, 3, padding=1, dilation=1)
-        self.receptive_2 = nn.Conv2d(mid_channels, mid_channels // 4, 3, padding=2, dilation=2)
-        self.receptive_3 = nn.Conv2d(mid_channels, mid_channels // 4, 3, padding=3, dilation=3)
-        self.receptive_4 = nn.Conv2d(mid_channels, mid_channels // 4, 3, padding=4, dilation=4)
-
-        self.end = nn.Sequential(
-            nn.Conv2d(mid_channels, mid_channels // 2, 3, padding=1),
-            nn.ReLU(inplace=True),
-            nn.Conv2d(mid_channels // 2, out_channels, 1),
-            nn.Softplus()
-        )
-
     def forward(self, x):
         x = self.head(x)
 
@@ -117,3 +53,25 @@ class DensityPredictorWithDila4(nn.Module):
         density_out = self.end(F_mid)
 
         return density_out
+
+# class KWeights(nn.Module):
+#     def __init__(self, in_channels, out_channels: int=3, mid_channels: int=128):
+#         super().__init__()
+#
+#         # self.head = nn.Sequential(
+#         #     nn.Conv2d(in_channels, mid_channels, 3, padding=1),
+#         #     nn.BatchNorm2d(mid_channels),
+#         #     nn.ReLU(inplace=True),
+#         # )
+#
+#         self.weights = nn.Sequential(
+#             nn.AdaptiveAvgPool2d(1),
+#             nn.Flatten(),
+#             nn.Linear(in_channels, out_channels),
+#             nn.Softmax(dim=1)
+#         )
+#
+#     def forward(self, x):
+#         k = self.weights(x)
+#
+#         return k

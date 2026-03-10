@@ -94,7 +94,7 @@ class UpScaling(nn.Module):
 
         x1 = F.pad(x1, [diffW // 2, diffW - diffW // 2,
                         diffH // 2, diffH - diffH // 2])
-        x = torch.cat([x2, x1], dim=1)
+        x = torch.cat([x2, x1], dim=1) # torch.cat
 
         return self.conv(x)
     

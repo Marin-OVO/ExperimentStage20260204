@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 
 def plot_loss_and_lr(train_loss, learning_rate, min: int=1, save_dir='./'):
     try:
-        x = min * list(range(1, len(train_loss) + 1))
+        x = [i * min for i in range(1, len(train_loss) + 1)]
         fig, ax1 = plt.subplots(1, 1)
         ax1.plot(x, train_loss, 'r', label='loss')
         ax1.set_xlabel("epoch")
@@ -18,7 +18,7 @@ def plot_loss_and_lr(train_loss, learning_rate, min: int=1, save_dir='./'):
         ax2 = ax1.twinx()
         ax2.plot(x, learning_rate, label='lr')
         ax2.set_ylabel("learning rate")
-        ax2.set_xlim(1, len(train_loss) + 1)  # 设置横坐标整数间隔
+        ax2.set_xlim(min - 1, x[-1] + 1)  # 设置横坐标整数间隔
         plt.legend(loc='best')
 
         handles1, labels1 = ax1.get_legend_handles_labels()
@@ -37,12 +37,12 @@ def plot_loss_and_lr(train_loss, learning_rate, min: int=1, save_dir='./'):
 
 def plot_map(mAP, min: int=1, save_dir='./'):
     try:
-        x = min * list(range(1, len(mAP) + 1))
+        x = [i * min for i in range(1, len(mAP) + 1)]
         plt.plot(x, mAP, label='mAp')
         plt.xlabel('epoch')
         plt.ylabel('mAP')
         plt.title('Eval mAP')
-        plt.xlim(1, len(mAP) + 1)
+        plt.xlim(min - 1, x[-1] + 1)
         plt.legend(loc='best')
 
         filename = os.path.join(save_dir, 'mAP.png')
@@ -54,12 +54,12 @@ def plot_map(mAP, min: int=1, save_dir='./'):
 
 def plot_f1(f1, min: int=1, save_dir='./'):
     try:
-        x = min * list(range(1, len(f1) + 1))
+        x = [i * min for i in range(1, len(f1) + 1)]
         plt.plot(x, f1, label='F1-score')
         plt.xlabel('epoch')
         plt.ylabel('F1-score')
         plt.title('Eval F1-score')
-        plt.xlim(1, len(f1) + 1)
+        plt.xlim(min - 1, x[-1] + 1)
         plt.legend(loc='best')
 
         filename = os.path.join(save_dir, 'F1-score.png')

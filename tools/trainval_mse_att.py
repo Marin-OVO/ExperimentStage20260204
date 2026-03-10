@@ -8,7 +8,7 @@ from model import UNetTestAtt
 from datasets import CrowdDataset
 from utils import custom_collate_fn
 from utils.metrics import PointsMetrics
-from utils.engine.test import train_one_epoch, val_one_epoch
+from utils.engine.test_att import train_one_epoch, val_one_epoch
 from utils.logger import setup_default_logging, time_str
 from utils.seed import set_seed
 
@@ -232,7 +232,6 @@ def main(args):
             data_frame = pd.DataFrame([tmp_results])
             if epoch + 1 == 5:
                 data_frame.to_csv(csv_path, mode='w', header=True, index=False)
-                data_frame.to_csv(csv_path, mode='a', header=False, index=False)
             else:
                 data_frame.to_csv(csv_path, mode='a', header=False, index=False)
 

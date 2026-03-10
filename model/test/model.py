@@ -22,16 +22,15 @@ class UNetTest(nn.Module):
         self.up3 = (UpScaling(256, 128 // factor, bilinear))
         self.up4 = (UpScaling(128, 64, bilinear))
 
-        self.relu = nn.ReLU(inplace=True)
-
         self.conv1x1 = nn.Conv2d(in_channels=3, out_channels=64, kernel_size=1, stride=1)
-        self.density_conv = nn.Conv2d(3, 64, 1)
-
-        self.heatmap_head = HeatmapHead(in_channels=64, out_channels=num_class)
+        self.maxpool_conv = MaxPool(64, 64)
+        self.density_conv = nn.Conv2d(1, 64, 1)
 
         # self.kweights = KWeights(in_channels=64, out_channels=3, mid_channels=32)
-        self.density_predictor = DensityPredictorWithDila4(in_channels=64, out_channels=1)
+        self.heatmap_head = HeatmapHead(in_channels=64, out_channels=num_class)
+        self.density_predictor = DensityPredictor(in_channels=64, out_channels=1)
 
+        self.relu = nn.ReLU(inplace=True)
         self.sigmoid = nn.Sigmoid()
 
     def forward(self, Ci):
@@ -48,14 +47,23 @@ class UNetTest(nn.Module):
         Fi = self.up3(Fi, x2)
         Fi = self.up4(Fi, x1)
 
-        density_out = self.density_predictor(Fi) # 1
+        # density_out = self.density_predictor(Fi) # 1
 
+        # ====== Max Pool =======
+        Fi_maxpool = self.maxpool_conv(Fi)
+        density_out = self.density_predictor(Fi_maxpool) # 1
+        # ====== Max Pool =======
+
+        # ====== adaptive kernel ======
         # k = self.kweights(Fi)
         # density_out = self.density_predictor(Fi, k) # 1
+        # ====== adaptive kernel ======
 
-        Ci_avg = subtract_avg_pool(Ci, k=3) # 3
-        Ci_mid = Ci_avg * self.sigmoid(Ci_avg) + Ci_avg
-        density_out = density_out * Ci_mid
+        # ====== x - avg.pool ======
+        # Ci_avg = subtract_avg_pool(Ci, k=3) # 3
+        # Ci_mid = Ci_avg * self.sigmoid(Ci_avg) + Ci_avg
+        # density_out = density_out * Ci_mid
+        # ====== x - avg.pool ======
 
         density_feature = self.density_conv(density_out) # @@.
         Fi_density = Fi * density_feature

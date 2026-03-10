@@ -110,17 +110,17 @@ def main(args):
     logger.info(f'Trainable parameters: {trainable_params / 1e6:.2f} M')
 
     train_dataloader = DataLoader(
-        dataset = train_dataset,
-        batch_size = args.batch_size,
-        shuffle = True,
+        dataset=train_dataset,
+        batch_size=args.batch_size,
+        shuffle=True,
         pin_memory=True,
         num_workers=args.num_worker,
         collate_fn=custom_collate_fn
     )
     val_dataloader = DataLoader(
-        dataset = val_dataset,
-        batch_size = 1,
-        shuffle = False,
+        dataset=val_dataset,
+        batch_size=1,
+        shuffle=False,
         pin_memory=True,
         num_workers=args.num_worker,
     )
@@ -168,7 +168,7 @@ def main(args):
             print_freq=print_freq,
             args=args
         )
-        train_loss_list.append(loss)
+        train_loss_list.append(loss) # train loss
         lr_list.append(lr)
 
         # val
@@ -222,29 +222,29 @@ def main(args):
             outpath = os.path.join(work_dir, 'latest_model.pth')
             torch.save(state, outpath)
 
-        # add the best info to results
-        tmp_results['best_val'] = best_val
-        tmp_results['best_epoch'] = best_epoch + 1
-        tmp_results['train_loss'] = loss
+            # add the best info to results
+            tmp_results['best_val'] = best_val
+            tmp_results['best_epoch'] = best_epoch + 1
+            tmp_results['train_loss'] = loss
 
-        # log to csv
-        data_frame = pd.DataFrame([tmp_results])
-        if epoch == 0:
-            data_frame.to_csv(csv_path, mode='w', header=True, index=False)
-        else:
-            data_frame.to_csv(csv_path, mode='a', header=False, index=False)
+            # log to csv
+            data_frame = pd.DataFrame([tmp_results])
+            if epoch == 0:
+                data_frame.to_csv(csv_path, mode='w', header=True, index=False)
+            else:
+                data_frame.to_csv(csv_path, mode='a', header=False, index=False)
 
-        # log val results
-        logger.info(
-            f"Val Results: "
-            f"Epoch: [{epoch + 1:03d}/{args.epoch:03d}] | "
-            f"Precision: {tmp_results['precision']:^8.4f} | "
-            f"Recall: {tmp_results['recall']:^8.4f} | "
-            f"F1-score: {tmp_results['f1_score']:^8.4f} | "
-            f"mAP: {tmp_results['mAP']:^8.4f} | "
-            f"Best-Val({validate_on}): {best_val:^8.4f} | "
-            f"Best-Epoch: {best_epoch + 1:^3} "
-        )
+            # log val results
+            logger.info(
+                f"Val Results: "
+                f"Epoch: [{epoch + 1:03d}/{args.epoch:03d}] | "
+                f"Precision: {tmp_results['precision']:^8.4f} | "
+                f"Recall: {tmp_results['recall']:^8.4f} | "
+                f"F1-score: {tmp_results['f1_score']:^8.4f} | "
+                f"mAP: {tmp_results['mAP']:^8.4f} | "
+                f"Best-Val({validate_on}): {best_val:^8.4f} | "
+                f"Best-Epoch: {best_epoch + 1:^3} "
+            )
 
         lr_scheduler.step()
 
@@ -254,17 +254,17 @@ def main(args):
     logger.info(f'Results saved to: {work_dir}')
     logger.info('=' * 60)
 
-    if len(train_loss_list) != 0 and len(lr_list) != 0:
+    if len(train_loss_list) != 0 and len(lr_list) != 0: # train loss
         from utils.plot_curve import plot_loss_and_lr
-        plot_loss_and_lr(train_loss_list, lr_list, work_dir)
+        plot_loss_and_lr(train_loss_list, lr_list, save_dir=work_dir)
 
-    if len(map_list) != 0:
+    if len(map_list) != 0: # val
         from utils.plot_curve import plot_map
-        plot_map(map_list, work_dir)
+        plot_map(map_list, min=5, save_dir=work_dir)
 
-    if len(f1_list) != 0:
+    if len(f1_list) != 0: # val
         from utils.plot_curve import plot_f1
-        plot_f1(f1_list, work_dir)
+        plot_f1(f1_list, min=5, save_dir=work_dir)
 
 
 if __name__ == "__main__":

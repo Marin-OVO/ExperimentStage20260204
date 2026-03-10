@@ -14,7 +14,6 @@ from utils.lmds import LMDS
 from utils.logger import *
 from utils.averager import *
 from utils.loss import *
-# from model import AdaptiveKernel
 
 from torch.cuda.amp import autocast
 
@@ -32,6 +31,8 @@ def train_one_epoch(
         ) -> float:
     # init
     first_order_loss = AverageMeter(20)
+    second_order_loss = AverageMeter(20)
+    third_order_loss = AverageMeter(20)
     losses = AverageMeter(20)
     batch_times = AverageMeter(20)
 
@@ -44,6 +45,8 @@ def train_one_epoch(
     model.train()
     lr = optimizer.param_groups[0]['lr']
 
+    confidence_gt_map = ConfidenceMapping(0.1, 0.5)
+
     for step, (images, targets) in enumerate(train_dataloader):
 
         # img
@@ -53,16 +56,28 @@ def train_one_epoch(
 
             # train outputs
             gt_heatmap = targets['fidt_map'].to(device)
+            # confidence_map = confidence_gt_map(gt_heatmap)
             outputs = model(images)
             heatmap_out = outputs['heatmap_out']
+            x1_out = outputs['x1_out']
+            x2_out = outputs['x2_out']
+            # confidence_out = outputs['confidence_out']
 
             # loss
             heatmap_loss = F.mse_loss(heatmap_out[:, 0:1, :, :], gt_heatmap)
-            heatmap_weight = 1.0
-            total_loss = (heatmap_weight * heatmap_loss)
+            x1_loss = F.mse_loss(x1_out, gt_heatmap)
+            x2_loss = F.mse_loss(x2_out, gt_heatmap)
+            # confidence_loss = F.binary_cross_entropy_with_logits(confidence_out, confidence_map)
 
+            heatmap_weight = 1.0
+            x1_weight = 0.2
+            x2_weight = 0.5
+            # confidence_weight = 0.1
+            total_loss = (heatmap_weight * heatmap_loss) + (x1_weight * x1_loss) + (x2_weight * x2_loss)
 
         first_order_loss.update(heatmap_loss.detach().cpu().item())
+        second_order_loss.update(x1_loss.detach().cpu().item())
+        third_order_loss.update(x2_loss.detach().cpu().item())
         losses.update(total_loss.detach().cpu().item())
 
         optimizer.zero_grad()
@@ -74,10 +89,14 @@ def train_one_epoch(
             logger.info(
                 "Epoch [{:03d}/{:03d}] | Iter {:^5} | LR {:.6f} | "
                 "First {:.3f}({:.3f}) | "
+                "Second {:.3f}({:.3f}) | "
+                "Third {:.3f}({:.3f}) | "
                 "Total {:.3f}({:.3f})".format(
                     epoch + 1, args.epoch,
                     step, lr,
                     first_order_loss.val, first_order_loss.avg,
+                    second_order_loss.val, second_order_loss.avg,
+                    third_order_loss.val, third_order_loss.avg,
                     losses.val, losses.avg,
                 )
             )

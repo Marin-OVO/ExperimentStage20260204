@@ -1,9 +1,25 @@
-from utils.registry import Registry
 import torch
 import torch.nn as nn
 from typing import Optional
 
+from utils.registry import Registry
+
+
 LOSSES = Registry('losses')
+
+class ConfidenceMapping(nn.Module):
+    def __init__(self, init_a=0.1, init_b=0.5):
+        super().__init__()
+        self.a = nn.Parameter(torch.tensor(init_a))
+        self.b = nn.Parameter(torch.tensor(init_b))
+
+    def forward(self, x):
+        a = torch.sigmoid(self.a)
+        b = torch.sigmoid(self.b)
+
+        b = a + torch.abs(b - a) + 1e-4
+
+        return torch.clamp((x - a) / (b - a), min=0.0, max=1.0)
 
 
 def build_gt_offset(gt_points, H, W, radius, device, stride: int = 1):
